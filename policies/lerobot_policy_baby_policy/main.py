@@ -1,5 +1,5 @@
 def main():
-    print("Hello from lerobot_policy_baby_policy!")
+    print("Hello from lerobot-policy-baby-policy!")
 
 
 if __name__ == "__main__":
