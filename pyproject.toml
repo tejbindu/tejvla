@@ -5,16 +5,17 @@ description = "Add your description here"
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
-    "lerobot[dataset]>=0.6.0",
-    "lerobot_policy_baby_policy"
+    "gym-pusht>=0.1.6",
+    "lerobot[dataset,training]>=0.6.0",
+    "lerobot_policy_babyvla",
 ]
 
 [tool.uv.sources]
-lerobot_policy_baby_policy = { workspace = true }
+lerobot_policy_babyvla = { workspace = true }
 
 [tool.uv.workspace]
 members = [
-    "policies/lerobot_policy_baby_policy",
+    "policies/lerobot_policy_babyvla",
 ]
 
 

@@ -4,10 +4,10 @@ from lerobot.configs import PreTrainedConfig
 from lerobot.optim import AdamWConfig
 from lerobot.optim import CosineDecayWithWarmupSchedulerConfig
 
-@PreTrainedConfig.register_subclass("baby_policy")
+@PreTrainedConfig.register_subclass("babyvla")
 @dataclass
-class BabyPolicyConfig(PreTrainedConfig):
-    """Configuration class for BabyPolicy.
+class BabyVLAConfig(PreTrainedConfig):
+    """Configuration class for BabyVLA.
 
     Args:
         n_obs_steps: Number of observation steps to use as input
@@ -35,9 +35,9 @@ class BabyPolicyConfig(PreTrainedConfig):
         Call this explicitly from your policy's __init__ — the base class does not.
         """
         if not self.image_features:
-            raise ValueError("BabyPolicy requires at least one image feature.")
+            raise ValueError("BabyVLA requires at least one image feature.")
         if self.action_feature is None:
-            raise ValueError("BabyPolicy requires 'action' in output_features.")
+            raise ValueError("BabyVLA requires 'action' in output_features.")
 
     def get_optimizer_preset(self) -> AdamWConfig:
         return AdamWConfig(lr=self.optimizer_lr, weight_decay=self.optimizer_weight_decay)

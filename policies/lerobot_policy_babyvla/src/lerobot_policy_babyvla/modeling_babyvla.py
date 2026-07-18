@@ -1,18 +1,17 @@
-# modeling_baby_policy.py
 import torch
 import torch.nn as nn
 from typing import Any
 
 from lerobot.policies import PreTrainedPolicy
 from lerobot.utils.constants import ACTION
-from .configuration_baby_policy import BabyPolicyConfig
+from .configuration_babyvla import BabyVLAConfig
 
-class BabyPolicy(PreTrainedPolicy):
-    config_class = BabyPolicyConfig  # must match the string in @register_subclass
-    name = "baby_policy"
+class BabyVLAPolicy(PreTrainedPolicy):
+    config_class = BabyVLAConfig  # must match the string in @register_subclass
+    name = "babyvla"
 
-    def __init__(self, config: BabyPolicyConfig, dataset_stats: dict[str, Any] = None):
-        super().__init__(config, dataset_stats)
+    def __init__(self, config: BabyVLAConfig, dataset_stats: dict[str, Any] = None, dataset_meta: dict[str, Any] = None):
+        super().__init__(config, dataset_stats, dataset_meta)
         config.validate_features()  # not called automatically by the base class
         self.config = config
         self.model = ...  # your nn.Module here
