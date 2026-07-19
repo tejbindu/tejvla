@@ -3,6 +3,7 @@ from dataclasses import dataclass, field
 from lerobot.configs import PreTrainedConfig
 from lerobot.optim import AdamWConfig
 from lerobot.optim import CosineDecayWithWarmupSchedulerConfig
+from lerobot.configs.types import NormalizationMode
 
 @PreTrainedConfig.register_subclass("babyvla")
 @dataclass
@@ -23,6 +24,13 @@ class BabyVLAConfig(PreTrainedConfig):
 
     optimizer_lr: float = 1e-4
     optimizer_weight_decay: float = 1e-4
+    normalization_mapping: dict[str, NormalizationMode] = field(
+        default_factory=lambda: {
+            "VISUAL": NormalizationMode.MEAN_STD,
+            "STATE": NormalizationMode.MIN_MAX,
+            "ACTION": NormalizationMode.MIN_MAX,
+        }
+    )
 
     def __post_init__(self):
         super().__post_init__()

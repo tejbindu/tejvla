@@ -14,7 +14,7 @@ class BabyVLAPolicy(PreTrainedPolicy):
         super().__init__(config, dataset_stats, dataset_meta)
         config.validate_features()  # not called automatically by the base class
         self.config = config
-        self.model = ...  # your nn.Module here
+        self.model = nn.Sequential(nn.Linear(2,3))
 
     def reset(self):
         """Reset per-episode state. Called by lerobot-eval at the start of each episode."""
@@ -22,7 +22,7 @@ class BabyVLAPolicy(PreTrainedPolicy):
 
     def get_optim_params(self) -> dict:
         """Return parameters to pass to the optimizer (e.g. with per-group lr/wd)."""
-        return {"params": self.parameters()}
+        return self.model.parameters()
 
     def predict_action_chunk(self, batch: dict[str, torch.Tensor], **kwargs) -> torch.Tensor:
         """Return the full action chunk (B, chunk_size, action_dim) for the current observation."""

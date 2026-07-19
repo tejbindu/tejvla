@@ -9,7 +9,7 @@ lerobot-train \
 
 - Setup:
 ```
-Install: sudo pacman -S libglvnd
+Install: sudo pacman -S libglvnd ffmpeg
 ```
 
 #### Notes
