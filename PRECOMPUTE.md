@@ -3,7 +3,7 @@
 lerobot-train \
             --policy.type babyvla \
             --dataset.repo_id lerobot/svla_so101_pickplace \
-            --steps 200000 \
+            --steps 200 \
             --policy.repo_id tejbindu/babyvla
 ```
 
