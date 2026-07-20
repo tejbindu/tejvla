@@ -16,6 +16,7 @@ class BabayModel(nn.Module):
                 nn.MaxPool2d(kernel_size=5),
                 nn.Conv2d(in_channels=6, out_channels=3, kernel_size=5),
                 nn.MaxPool2d(kernel_size=5),
+                nn.Flatten(),
                 nn.Linear(1296, 128),
                 nn.Linear(128, 32),
                 nn.Linear(32, 6),
@@ -35,7 +36,8 @@ class BabyVLAPolicy(PreTrainedPolicy):
         super().__init__(config, dataset_stats, dataset_meta)
         config.validate_features()  # not called automatically by the base class
         self.config = config
-        self.model = BabayModel().to("cuda")
+        self.model = BabayModel()
+        self.criterion = nn.MSELoss()
 
     def reset(self):
         """Reset per-episode state. Called by lerobot-eval at the start of each episode."""
@@ -70,9 +72,9 @@ class BabyVLAPolicy(PreTrainedPolicy):
         #up_images = batch[UP_IMAGE] # (B, 3, 480, 640)
         #side_images = batch[SIDE_IMAGE] # (B, 3, 480, 640)
         #loss = torch.tensor([1,2,3])
-        imm_action = actions[:,0,:].to("cuda")
+        imm_action = actions[:,0,:]
         pred_action = self.model(batch)
-        loss = nn.MSELoss(pred_action, imm_action)
+        loss = self.criterion(pred_action, imm_action)
         return loss, None
 
 
