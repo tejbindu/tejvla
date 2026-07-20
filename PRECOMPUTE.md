@@ -13,4 +13,4 @@ Install: sudo pacman -S libglvnd ffmpeg
 ```
 
 #### Notes
-- Tried pusht dataset but didnt work. too many issues. so moved on and tried libero dataset
+- Tried pusht dataset but didnt work. too many issues. so moved on and tried libero dataset. That had issues with dataset size. so moving to the lerobot svla pickplace dataset

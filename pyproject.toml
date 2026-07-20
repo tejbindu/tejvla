@@ -5,7 +5,6 @@ description = "Add your description here"
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
-    "gym-pusht>=0.1.6",
     "lerobot[dataset,training]>=0.6.0",
     "lerobot_policy_babyvla",
 ]

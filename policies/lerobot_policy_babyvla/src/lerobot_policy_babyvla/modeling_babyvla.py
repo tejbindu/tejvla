@@ -3,8 +3,29 @@ import torch.nn as nn
 from typing import Any
 
 from lerobot.policies import PreTrainedPolicy
-from lerobot.utils.constants import ACTION
 from .configuration_babyvla import BabyVLAConfig
+import pickle
+from .constants import ACTION, TASK, UP_IMAGE, SIDE_IMAGE, STATE, ACTION_PAD
+
+class BabayModel(nn.Module):
+    
+    def __init__(self):
+        super().__init__()
+        self.model = nn.Sequential(
+                nn.Conv2d(in_channels=3, out_channels=6, kernel_size=5),
+                nn.MaxPool2d(kernel_size=5),
+                nn.Conv2d(in_channels=6, out_channels=3, kernel_size=5),
+                nn.MaxPool2d(kernel_size=5),
+                nn.Linear(1296, 128),
+                nn.Linear(128, 32),
+                nn.Linear(32, 6),
+                nn.Tanh()
+                )
+
+    def forward(self, batch: dict[str, torch.Tensor]):
+        up_images = batch[UP_IMAGE] # (B, 3, 480, 640)
+        return self.model(up_images)
+
 
 class BabyVLAPolicy(PreTrainedPolicy):
     config_class = BabyVLAConfig  # must match the string in @register_subclass
@@ -14,7 +35,7 @@ class BabyVLAPolicy(PreTrainedPolicy):
         super().__init__(config, dataset_stats, dataset_meta)
         config.validate_features()  # not called automatically by the base class
         self.config = config
-        self.model = nn.Sequential(nn.Linear(2,3))
+        self.model = BabayModel().to("cuda")
 
     def reset(self):
         """Reset per-episode state. Called by lerobot-eval at the start of each episode."""
@@ -42,7 +63,16 @@ class BabyVLAPolicy(PreTrainedPolicy):
         timesteps padded because the episode ended before `horizon` steps; you
         can exclude those from your loss.
         """
-        actions = batch[ACTION]
-        action_is_pad = batch.get("action_is_pad")
-        ...
-        return loss, {"some_loss_component": some_loss_component.item()}
+
+        actions = batch[ACTION] # (B, 50 (horizon), 6)
+        #action_is_pad = batch.get(ACTION_PAD)
+        #states = batch[STATE] # (B, 6)
+        #up_images = batch[UP_IMAGE] # (B, 3, 480, 640)
+        #side_images = batch[SIDE_IMAGE] # (B, 3, 480, 640)
+        #loss = torch.tensor([1,2,3])
+        imm_action = actions[:,0,:].to("cuda")
+        pred_action = self.model(batch)
+        loss = nn.MSELoss(pred_action, imm_action)
+        return loss, None
+
+
