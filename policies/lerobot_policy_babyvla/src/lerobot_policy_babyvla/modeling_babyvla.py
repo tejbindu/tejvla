@@ -6,26 +6,24 @@ from lerobot.policies import PreTrainedPolicy
 from .configuration_babyvla import BabyVLAConfig
 import pickle
 from .constants import ACTION, TASK, UP_IMAGE, SIDE_IMAGE, STATE, ACTION_PAD
+from transformers import Qwen2VLForConditionalGeneration, Qwen2VLProcessor
 
-class BabayModel(nn.Module):
+
+class BabyModel(nn.Module):
     
     def __init__(self):
         super().__init__()
-        self.model = nn.Sequential(
-                nn.Conv2d(in_channels=3, out_channels=6, kernel_size=5),
-                nn.MaxPool2d(kernel_size=5),
-                nn.Conv2d(in_channels=6, out_channels=3, kernel_size=5),
-                nn.MaxPool2d(kernel_size=5),
-                nn.Flatten(),
-                nn.Linear(1296, 128),
-                nn.Linear(128, 32),
-                nn.Linear(32, 6),
-                nn.Tanh()
-                )
+        self.model = Qwen2VLForConditionalGeneration.from_pretrained("Qwen/Qwen2-VL-2B", device_map="auto")
+        self.processor = Qwen2VLProcessor.from_pretrained("Qwen/Qwen2-VL-2B")
 
     def forward(self, batch: dict[str, torch.Tensor]):
         up_images = batch[UP_IMAGE] # (B, 3, 480, 640)
-        return self.model(up_images)
+        side_images = batch[SIDE_IMAGE] # (B, 3, 480, 640)
+        cat_images = torch.cat((up_images, side_images), dim=-1)
+        tasks = batch[TASK] # (B)
+        prompts = [f"The task given to robot is: {tasks[i]} .This is the robot view (up view is on the left and side_view is on the right) <|image_pad|>. Robot should take action " for i in range(len(tasks))]
+        inputs = self.processor(images=images, text=prompts, return_tensors="pt").to(device)
+        return self.model(**inputs)
 
 
 class BabyVLAPolicy(PreTrainedPolicy):
@@ -36,8 +34,8 @@ class BabyVLAPolicy(PreTrainedPolicy):
         super().__init__(config, dataset_stats, dataset_meta)
         config.validate_features()  # not called automatically by the base class
         self.config = config
-        self.model = BabayModel().to("cuda")
-        self.criterion = nn.MSELoss().to("cuda")
+        self.model = BabyModel().to("cuda")
+        self.criterion = nn.CrossEntropyLoss().to("cuda")
 
     def reset(self):
         """Reset per-episode state. Called by lerobot-eval at the start of each episode."""
@@ -65,8 +63,10 @@ class BabyVLAPolicy(PreTrainedPolicy):
         timesteps padded because the episode ended before `horizon` steps; you
         can exclude those from your loss.
         """
-
+        with open("batch.pkl", "wb") as f:
+            pickle.dump(batch, f)
         actions = batch[ACTION] # (B, 50 (horizon), 6)
+        tasks = batch[TASK] # (B)
         #action_is_pad = batch.get(ACTION_PAD)
         #states = batch[STATE] # (B, 6)
         #up_images = batch[UP_IMAGE] # (B, 3, 480, 640)

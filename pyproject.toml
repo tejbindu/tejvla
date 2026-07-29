@@ -7,6 +7,7 @@ requires-python = ">=3.12"
 dependencies = [
     "lerobot[dataset,training]>=0.6.0",
     "lerobot_policy_babyvla",
+    "transformers>=5.14.1",
 ]
 
 [tool.uv.sources]
