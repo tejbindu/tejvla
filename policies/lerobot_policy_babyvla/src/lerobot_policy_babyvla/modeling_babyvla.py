@@ -6,14 +6,15 @@ from lerobot.policies import PreTrainedPolicy
 from .configuration_babyvla import BabyVLAConfig
 import pickle
 from .constants import ACTION, TASK, UP_IMAGE, SIDE_IMAGE, STATE, ACTION_PAD
-from transformers import Qwen2VLForConditionalGeneration, Qwen2VLProcessor
+from transformers import Qwen2VLForConditionalGeneration, Qwen2VLProcessor, BitsAndBytesConfig
 
 
 class BabyModel(nn.Module):
     
     def __init__(self):
         super().__init__()
-        self.model = Qwen2VLForConditionalGeneration.from_pretrained("Qwen/Qwen2-VL-2B", device_map="auto")
+        self.quantization_config = BitsAndBytesConfig(load_in_4bit=True)
+        self.model = Qwen2VLForConditionalGeneration.from_pretrained("Qwen/Qwen2-VL-2B", device_map="auto", quantization_config=self.quantization_config)
         self.processor = Qwen2VLProcessor.from_pretrained("Qwen/Qwen2-VL-2B")
 
     def forward(self, batch: dict[str, torch.Tensor]):
@@ -22,7 +23,7 @@ class BabyModel(nn.Module):
         cat_images = torch.cat((up_images, side_images), dim=-1)
         tasks = batch[TASK] # (B)
         prompts = [f"The task given to robot is: {tasks[i]} .This is the robot view (up view is on the left and side_view is on the right) <|image_pad|>. Robot should take action " for i in range(len(tasks))]
-        inputs = self.processor(images=images, text=prompts, return_tensors="pt").to(device)
+        inputs = self.processor(images=cat_images, text=prompts, return_tensors="pt").to(self.model.device)
         return self.model(**inputs)
 
 

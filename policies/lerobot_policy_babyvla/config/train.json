@@ -1,0 +1,12 @@
+{
+    "batch_size": 1,
+    "steps": 200,
+    "dataset": {
+        "repo_id": "lerobot/svla_so101_pickplace"
+    },
+    "policy": {
+        "repo_id": "tejbindu/babyvla",
+	"type": "babyvla"
+    }
+}
+

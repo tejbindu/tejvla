@@ -7,6 +7,10 @@ lerobot-train \
             --policy.repo_id tejbindu/babyvla
 ```
 
+```
+lerobot-train --config_path policies/lerobot_policy_babyvla/config/train.json
+```
+
 - Setup:
 ```
 Install: sudo pacman -S libglvnd ffmpeg
