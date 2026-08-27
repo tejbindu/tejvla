@@ -7,6 +7,16 @@ from .configuration_babyvla import BabyVLAConfig
 import pickle
 from .constants import ACTION, TASK, UP_IMAGE, SIDE_IMAGE, STATE, ACTION_PAD
 from transformers import Qwen2VLForConditionalGeneration, Qwen2VLProcessor, BitsAndBytesConfig
+from transformers import LogitsProcessor, LogitsProcessorList
+
+class AllowedTokensLogitsProcessor(LogitsProcessor):
+    def __init__(self, allowed_token_ids):
+        self.allowed_token_ids = list(allowed_token_ids)
+
+    def __call__(self, input_ids, scores):
+        mask = torch.full_like(scores, float("-inf"))
+        mask[:, self.allowed_token_ids] = scores[:, self.allowed_token_ids]
+        return mask
 
 
 class BabyModel(nn.Module):
@@ -16,6 +26,12 @@ class BabyModel(nn.Module):
         self.quantization_config = BitsAndBytesConfig(load_in_4bit=True)
         self.model = Qwen2VLForConditionalGeneration.from_pretrained("Qwen/Qwen2-VL-2B", device_map="auto", quantization_config=self.quantization_config)
         self.processor = Qwen2VLProcessor.from_pretrained("Qwen/Qwen2-VL-2B")
+        self.tokenizer = self.processor.tokenizer
+        self.allowed_ids = [
+                self.tokenizer.convert_tokens_to_ids("yes"),
+                self.tokenizer.convert_tokens_to_ids("no"),
+                self.tokenizer.eos_token_id
+                ]
 
     def forward(self, batch: dict[str, torch.Tensor]):
         up_images = batch[UP_IMAGE] # (B, 3, 480, 640)
@@ -24,7 +40,15 @@ class BabyModel(nn.Module):
         tasks = batch[TASK] # (B)
         prompts = [f"The task given to robot is: {tasks[i]} .This is the robot view (up view is on the left and side_view is on the right) <|image_pad|>. Robot should take action " for i in range(len(tasks))]
         inputs = self.processor(images=cat_images, text=prompts, return_tensors="pt").to(self.model.device)
-        return self.model(**inputs)
+        print("koko")
+        print(inputs)
+        print("moko")
+        outputs = self.model.generate(**inputs, min_new_tokens=6, max_new_tokens=6, logits_processor=LogitsProcessorList([AllowedTokensLogitsProcessor(self.allowed_ids)]))
+        print(outputs)
+        print("joko")
+        print(self.allowed_ids)
+        print("loko")
+        return outputs[:,-6:]
 
 
 class BabyVLAPolicy(PreTrainedPolicy):
@@ -64,8 +88,8 @@ class BabyVLAPolicy(PreTrainedPolicy):
         timesteps padded because the episode ended before `horizon` steps; you
         can exclude those from your loss.
         """
-        with open("batch.pkl", "wb") as f:
-            pickle.dump(batch, f)
+        # with open("batch.pkl", "wb") as f:
+        #     pickle.dump(batch, f)
         actions = batch[ACTION] # (B, 50 (horizon), 6)
         tasks = batch[TASK] # (B)
         #action_is_pad = batch.get(ACTION_PAD)
@@ -75,6 +99,9 @@ class BabyVLAPolicy(PreTrainedPolicy):
         #loss = torch.tensor([1,2,3])
         imm_action = actions[:,0,:].to("cuda")
         pred_action = self.model(batch)
+        print("foo")
+        print(pred_action)
+        print("moo")
         loss = self.criterion(pred_action, imm_action)
         return loss, None
 

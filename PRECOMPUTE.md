@@ -13,7 +13,8 @@ lerobot-train --config_path policies/lerobot_policy_babyvla/config/train.json
 
 - Setup:
 ```
-Install: sudo pacman -S libglvnd ffmpeg
+We must downgrade ffmpeg
+Install: sudo pacman -S libglvnd ffmpeg4.4 
 ```
 
 #### Notes
