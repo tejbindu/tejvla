@@ -26,12 +26,19 @@ class BabyModel(nn.Module):
         self.quantization_config = BitsAndBytesConfig(load_in_4bit=True)
         self.model = Qwen2VLForConditionalGeneration.from_pretrained("Qwen/Qwen2-VL-2B", device_map="auto", quantization_config=self.quantization_config)
         self.processor = Qwen2VLProcessor.from_pretrained("Qwen/Qwen2-VL-2B")
-        self.tokenizer = self.processor.tokenizer
-        self.allowed_ids = [
-                self.tokenizer.convert_tokens_to_ids("yes"),
-                self.tokenizer.convert_tokens_to_ids("no"),
-                self.tokenizer.eos_token_id
+        self.action_tokens = [
+                f"<action_{i}>" for i in range(100)
                 ]
+        self.tokenizer = self.processor.tokenizer
+        self.tokenizer.add_special_tokens({
+            "additional_special_tokens": self.action_tokens
+            })
+        self.model.resize_token_embeddings(len(self.tokenizer))
+        self.allowed_ids = [
+                self.tokenizer.convert_tokens_to_ids(token) for token in self.action_tokens
+                ] + [self.tokenizer.eos_token_id]
+        self.buckets = torch.tensor([-1 + i/50 for i in range(101)]).to("cuda")
+        assert len(self.allowed_ids) == len(self.buckets)
 
     def forward(self, batch: dict[str, torch.Tensor]):
         up_images = batch[UP_IMAGE] # (B, 3, 480, 640)
@@ -40,15 +47,24 @@ class BabyModel(nn.Module):
         tasks = batch[TASK] # (B)
         prompts = [f"The task given to robot is: {tasks[i]} .This is the robot view (up view is on the left and side_view is on the right) <|image_pad|>. Robot should take action " for i in range(len(tasks))]
         inputs = self.processor(images=cat_images, text=prompts, return_tensors="pt").to(self.model.device)
-        print("koko")
-        print(inputs)
-        print("moko")
-        outputs = self.model.generate(**inputs, min_new_tokens=6, max_new_tokens=6, logits_processor=LogitsProcessorList([AllowedTokensLogitsProcessor(self.allowed_ids)]))
-        print(outputs)
-        print("joko")
-        print(self.allowed_ids)
-        print("loko")
-        return outputs[:,-6:]
+        #
+        actions = batch[ACTION]
+        imm_action = actions[:,0,:].to("cuda")
+        imm_action = torch.bucketize(imm_action, self.buckets)-1
+        action_ids = torch.tensor(self.allowed_ids).to("cuda")[imm_action]
+        inputs["input_ids"] = torch.cat([inputs["input_ids"], action_ids], dim=1,)
+        inputs["attention_mask"] = torch.cat([inputs["attention_mask"], torch.ones_like(action_ids),],dim=1,)
+        if "mm_token_type_ids" in inputs:
+            inputs["mm_token_type_ids"] = torch.cat(
+                    [
+                        inputs["mm_token_type_ids"],torch.zeros_like(action_ids),],dim=1,)
+        labels = torch.full_like(inputs["input_ids"], -100)
+        labels[:, -6:] = action_ids
+        outputs = self.model(**inputs,labels=labels)
+        return outputs
+        #
+        # outputs = self.model.generate(**inputs, min_new_tokens=6, max_new_tokens=6, logits_processor=LogitsProcessorList([AllowedTokensLogitsProcessor(self.allowed_ids)]))
+        # return outputs[:,-6:]
 
 
 class BabyVLAPolicy(PreTrainedPolicy):
@@ -98,11 +114,11 @@ class BabyVLAPolicy(PreTrainedPolicy):
         #side_images = batch[SIDE_IMAGE] # (B, 3, 480, 640)
         #loss = torch.tensor([1,2,3])
         imm_action = actions[:,0,:].to("cuda")
-        pred_action = self.model(batch)
-        print("foo")
-        print(pred_action)
-        print("moo")
-        loss = self.criterion(pred_action, imm_action)
-        return loss, None
+        output = self.model(batch)
+        # print("foo")
+        # print(pred_action)
+        # print("moo")
+        # loss = self.criterion(pred_action, imm_action)
+        return output.loss, None
 
 
